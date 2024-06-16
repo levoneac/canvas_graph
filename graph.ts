@@ -570,10 +570,12 @@ export class Grapher extends GraphSetup {
                 let [x_val, y_val] = xy;
                 this.context.beginPath();
                 this.context.arc(x_val, y_val, 3, 0, Math.PI * 2, false);
-                this.context.fillStyle = this.draw_options.elem_color
+                this.context.fillStyle = this.draw_options.area_color
+                this.context.strokeStyle = this.draw_options.elem_color
                 if (!(x_val < this.x)) {
                     if (this.draw_options.fill === true) {
                         this.context.fill();
+                        this.context.stroke();
                     } else {
                         this.context.stroke();
                     }
@@ -620,13 +622,9 @@ export class Grapher extends GraphSetup {
 
 
     protected handleMouseScroll(this: Grapher, event: WheelEvent) {
-        let element: HTMLCanvasElement = event.target as HTMLCanvasElement;
-        let offset_left: number = element.offsetLeft;
-        let offset_top: number = element.offsetTop;
-
-        let x: number = event.x - offset_left;
-        let y: number = event.y - offset_top;
-
+        let x: number = event.offsetX;
+        let y: number = event.offsetY;
+        //console.log(x, event.pageX, event.deltaX, event.clientX, event.offsetX, event.screenX)
 
         //convert the canvas coordinate to the real coordinate
         let [c_x, c_y] = this.getPointFromCanvasCoordinate(x, y, this.newbounds);
@@ -664,8 +662,8 @@ export class Grapher extends GraphSetup {
         let offset_left: number = element.offsetLeft;
         let offset_top: number = element.offsetTop;
 
-        let x: number = event.layerX - offset_left;
-        let y: number = event.layerY - offset_top;
+        let x: number = event.clientX - offset_left;
+        let y: number = event.clientY - offset_top;
 
         if (event.button === 0 && event.buttons === 1 && event.type === "mousedown" && this.drag_active === false) { //press down
 
