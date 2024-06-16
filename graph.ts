@@ -102,18 +102,11 @@ function nDecimals(str: string, n_decimals: number): string {
 
 }
 
-
-/**
- * 
- * Creates the basics needed for a graph
- * @param context 
- * @param chart_padding default is 90%
- */
 abstract class GraphSetup {
     protected context: CanvasRenderingContext2D;
 
     /**object containing all the currently drawn graphs */
-    public graphs_on_chart: OnCanvas = {};
+    protected graphs_on_chart: OnCanvas = {};
 
     /**set after drawing chart */
     protected graph_extists: boolean = false;
@@ -149,6 +142,11 @@ abstract class GraphSetup {
 
     /**ensures that the axis labeling exists */
     protected axis_numeration_exists: boolean = false;
+
+    protected extremes!: XY_Extremes;
+    protected extremes_initializaed: boolean = false;
+    public zoom_intensity = 0.15;
+
 
     /**options that are shared between all the plots on the same graph */
     protected global_options: GlobalOptions = {
@@ -186,18 +184,29 @@ abstract class GraphSetup {
         this.context.canvas.style.height = "100%";
         this.context.canvas.width = this.context.canvas.offsetWidth;
         this.context.canvas.height = this.context.canvas.offsetHeight;
+
+        this.initExtremes();
         if (options !== undefined) {
             this.updateGlobalCustomization(options);
         }
         this.chartArea();
         this.applyPaddingToChartDimensionBounds(this.context.canvas.width, this.x, this.h, this.y);
     }
+
+    protected initExtremes() {
+        this.extremes = {
+            xmax: 0,
+            xmin: 0,
+            ymax: 0,
+            ymin: 0
+        };
+        this.newbounds = { ...this.extremes }
+    }
     /**
      * Get the dimensions of a charting area on x% of the canvas
-     * @param size_in_percent The size of the canvas you want the chart to use
      * @updates [this.x, this.y, this.w, this.h] ~ Which you can use to draw a rectangle for the chart
      */
-    public chartArea(): void {
+    protected chartArea(): void {
         this.label_spacing = (this.context.measureText("").fontBoundingBoxAscent - this.context.measureText("").fontBoundingBoxDescent) * 6;
         this.w = this.global_options.chart_scale !== 1 ? this.context.canvas.width - this.label_spacing * 2 : this.context.canvas.width;;
         this.x = this.context.canvas.width - this.w;
@@ -225,7 +234,7 @@ abstract class GraphSetup {
 
 
 
-    public drawChartingArea(): void {
+    protected drawChartingArea(): void {
         this.context.clearRect(0, 0, this.context.canvas.width, this.context.canvas.height);
         this.drawAxisArea();
         this.context.fillStyle = this.global_options.bg_color;
@@ -246,7 +255,7 @@ abstract class GraphSetup {
         this.graph_extists = true;
     }
 
-    public drawAxisArea(): void {
+    protected drawAxisArea(): void {
         this.context.beginPath();
         this.context.fillStyle = this.global_options.bg_axis_area;
         this.context.fillRect(0, 0, this.x - this.global_options.chart_border_width / 2, this.context.canvas.height);
@@ -254,7 +263,7 @@ abstract class GraphSetup {
     }
 
 
-    public drawMissingDataMessage(msg?: string) {
+    protected drawMissingDataMessage(msg?: string) {
         if (msg === undefined) {
             msg = "No data";
         }
@@ -284,11 +293,11 @@ abstract class GraphSetup {
         }
     }
 
-    public updateDefaultCustomization(opts: OptionalDrawOptions) {
+    protected updateDefaultCustomization(opts: OptionalDrawOptions) {
         this.updateCustomization(opts);
     }
 
-    public updateGlobalCustomization(opts: OptionalGlobalOptions) {
+    protected updateGlobalCustomization(opts: OptionalGlobalOptions) {
         let keys: string[] = Object.keys(opts);
         for (let i = 0; i < keys.length; i++) {
             let key: keyof GlobalOptions = keys[i] as keyof GlobalOptions;
@@ -300,29 +309,7 @@ abstract class GraphSetup {
         }
     }
 
-}
-
-abstract class PointGraph extends GraphSetup {
-    protected extremes!: XY_Extremes;
-    protected extremes_initializaed: boolean = false;
-    public zoom_intensity = 0.15;
-
-    constructor(context: CanvasRenderingContext2D, options?: OptionalGlobalOptions) {
-        super(context, options);
-        this.initExtremes();
-    }
-
-    protected initExtremes() {
-        this.extremes = {
-            xmax: 0,
-            xmin: 0,
-            ymax: 0,
-            ymin: 0
-        };
-        this.newbounds = { ...this.extremes }
-    }
-
-    public drawAxisTitles(current_extremes: XY_Extremes): void {
+    protected drawAxisTitles(current_extremes: XY_Extremes): void {
         this.context.save();
         this.drawAxisArea();
         this.context.strokeStyle = "black";
@@ -407,14 +394,6 @@ abstract class PointGraph extends GraphSetup {
 
     /**
      * Scales an array of (x,y) points to fit in a specified area
-     * @param x_chart_dimension_max the highest possible x value
-     * @param x_chart_dimension_min the lowest possible x value
-     * @param y_chart_dimension_max the highest possible y value - since this is a canvas, this means the pixel value of the bottom of the charting area
-     * @param y_chart_dimension_min the lowest possible y value - in this case the top of the chart - usually 0
-     * @param arr the array of (x,y) values to scale
-     * @param padding optinally, set the amount of space between the edges and extreme points
-     * @param min_and_max_values optionally you can specify the minimum and maximum values of x and y so the function doesnt have to find them itself
-     * @returns 
      */
     protected pointsToCanvasCoordinate(arr: Array<[number, number]>, clear_old: boolean, min_and_max_values?: XY_Extremes): Array<[number, number]> {
         /*determine the min and max of x and y */
@@ -472,13 +451,11 @@ abstract class PointGraph extends GraphSetup {
         return [converted_x, converted_y];
     }
 
-    //public draw(xy_data: Array<[number, number]>, draw_customization: OptionalDrawOptions, ...rest: any): void {
-    //
-    //}
+
 }
 
 
-export class Grapher extends PointGraph {
+export class Grapher extends GraphSetup {
     protected graph_methods: PointGraphMethods = {
         "line": this.line,
         "scatter": this.scatter
@@ -487,7 +464,6 @@ export class Grapher extends PointGraph {
     protected current_drag_movement: Point = [0, 0];
     constructor(context: CanvasRenderingContext2D, interactive?: boolean, options?: OptionalGlobalOptions) {
         super(context, options);
-
 
         if (interactive === true) {
             this.context.canvas.addEventListener("wheel", this.handleMouseScroll.bind(this), { passive: false }); //if interactive
@@ -617,7 +593,7 @@ export class Grapher extends PointGraph {
      * Redraws the existing graphs
      * @param change the change of the extremes
      */
-    public redrawExisting() {
+    protected redrawExisting() {
         this.drawChartingArea();
         let graphs_on_chart: OnCanvas = this.graphs_on_chart
 
@@ -643,7 +619,7 @@ export class Grapher extends PointGraph {
     }
 
 
-    public handleMouseScroll(this: Grapher, event: WheelEvent) {
+    protected handleMouseScroll(this: Grapher, event: WheelEvent) {
         let element: HTMLCanvasElement = event.target as HTMLCanvasElement;
         let offset_left: number = element.offsetLeft;
         let offset_top: number = element.offsetTop;
@@ -679,29 +655,25 @@ export class Grapher extends PointGraph {
         }
     }
 
-    public handleMouseDrag(this: Grapher, event: MouseEvent) {
+    protected handleMouseDrag(this: Grapher, event: MouseEvent) {
         if ((event.button === 0 && event.buttons === 0 && event.type === "mouseup" && this.drag_active === true) || event.type === "mouseleave") { //release
             this.drag_active = false;
         }
-        else if (event.button === 0 && event.buttons === 1 && event.type === "mousedown" && this.drag_active === false) { //press down
-            let element: HTMLCanvasElement = event.target as HTMLCanvasElement;
-            let offset_left: number = element.offsetLeft;
-            let offset_top: number = element.offsetTop;
+        
+        let element: HTMLCanvasElement = event.target as HTMLCanvasElement;
+        let offset_left: number = element.offsetLeft;
+        let offset_top: number = element.offsetTop;
 
-            let x: number = event.layerX - offset_left;
-            let y: number = event.layerY - offset_top;
+        let x: number = event.layerX - offset_left;
+        let y: number = event.layerY - offset_top;
+
+        if (event.button === 0 && event.buttons === 1 && event.type === "mousedown" && this.drag_active === false) { //press down
+
 
             this.drag_active = true;
             this.current_drag_movement = [x, y];
         }
-        else if (this.drag_active === true) {
-            let element: HTMLCanvasElement = event.target as HTMLCanvasElement;
-            let offset_left: number = element.offsetLeft;
-            let offset_top: number = element.offsetTop;
-
-            let x: number = event.layerX - offset_left;
-            let y: number = event.layerY - offset_top;
-
+        if (this.drag_active === true) {
             if ((x - this.x > 0) && (y - this.h < 0)) {
                 //cant optimize this as you need the current newbounds to do the calculation
                 let [original_x, original_y] = this.getPointFromCanvasCoordinate(this.current_drag_movement[0], this.current_drag_movement[1], this.newbounds);
