@@ -5,7 +5,7 @@ import {Grapher, GraphType, OptionalGlobalOptions, OptionalDrawOptions} from "./
 
 export default function Graph({ xy_data, plot_type, global_options, individual_options, className }: { xy_data: Array<Array<[number, number]>>, plot_type: GraphType[], global_options?: OptionalGlobalOptions, individual_options?: OptionalDrawOptions[], className?: string }) {
     const ref = useRef<HTMLCanvasElement>(null);
-    
+
     useEffect(() => {
         const canvas = ref.current;
         if (canvas === null) {
@@ -35,6 +35,7 @@ export default function Graph({ xy_data, plot_type, global_options, individual_o
             if (plot_type[i] === "scatter") {
                 graph.scatter(xy_data[i], individual_options[i], false);
             }
+            //graph.zoom_intensity = 0.01
 
         }
     }, [])
