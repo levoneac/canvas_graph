@@ -1,3 +1,6 @@
+//TODO: make axis grid static
+
+
 /**A coordinate */
 type Point = [number, number];
 
@@ -44,10 +47,15 @@ interface DrawOptions {
 /**how much of the canvas that should be filled*/
 type ChartScaleOptions = 1 | 0.96 | 0.95 | 0.9;
 
+/**padding types, wheter to pad top right only or full. */
+type PaddingStyle = "full" | "topright";
+
+
 /**possible options that apply to the whole chart */
 interface GlobalOptions {
     chart_scale: ChartScaleOptions;
     edge_padding: number;
+    padding_style: PaddingStyle;
     bg_axis_area: string | CanvasGradient | CanvasPattern;
     bg_color: string | CanvasGradient | CanvasPattern;
     draw_grid: boolean;
@@ -72,6 +80,7 @@ export type OptionalGlobalOptions = MakeOptional<GlobalOptions>;
 
 /**currently implemented chart types */
 export type GraphType = "scatter" | "line";
+
 
 interface GraphMethods {
     "line": (xy_data: Array<[number, number]>, draw_customization: OptionalDrawOptions, clear_old: boolean) => void,
@@ -156,6 +165,7 @@ abstract class GraphSetup {
     protected global_options: GlobalOptions = {
         chart_scale: 0.95,
         edge_padding: 50,
+        padding_style: "full",
         bg_axis_area: "#eeeeee",
         bg_color: "white",
         draw_grid: true,
@@ -235,6 +245,10 @@ abstract class GraphSetup {
         } else {
             this.y_chart_dimension_max = this.h - this.global_options.edge_padding;
             this.y_chart_dimension_min = this.y + this.global_options.edge_padding;
+        }
+        if(this.global_options.padding_style === "topright"){
+            this.x_chart_dimension_min = this.x;
+            this.y_chart_dimension_max = this.h;
         }
     }
 
@@ -596,7 +610,7 @@ export class Grapher extends GraphSetup {
         this.context.restore();
         this.restoreCustomization();
     }
-    
+
     /**Redraws the existing graphs*/
     protected redrawExisting() {
         this.drawChartingArea();
@@ -623,11 +637,16 @@ export class Grapher extends GraphSetup {
         this.redraw_event = false;
     }
 
+    protected getMousePosition(event: MouseEvent){
+        let bounds: DOMRect = this.context.canvas.getBoundingClientRect();
+        let x: number = (event.clientX - bounds.left) * (this.context.canvas.width / bounds.width);
+        let y: number = (event.clientY - bounds.top) * (this.context.canvas.height / bounds.height);
+        console.log(this.context.canvas.height, bounds.height)
+        return [x, y];
+    }
 
     protected handleMouseScroll(this: Grapher, event: WheelEvent) {
-        let x: number = event.offsetX;
-        let y: number = event.offsetY;
-        //console.log(event.pageX, event.deltaX, event.clientX, event.offsetX, event.screenX)
+        let [x, y] = this.getMousePosition(event);
 
         //convert the canvas coordinate to the real coordinate
         let [c_x, c_y] = this.getPointFromCanvasCoordinate(x, y, this.newbounds);
@@ -660,14 +679,7 @@ export class Grapher extends GraphSetup {
         if ((event.button === 0 && event.buttons === 0 && event.type === "mouseup" && this.drag_active === true) || event.type === "mouseleave") { //release
             this.drag_active = false;
         }
-        
-        let element: HTMLCanvasElement = event.target as HTMLCanvasElement;
-        let offset_left: number = element.offsetLeft;
-        let offset_top: number = element.offsetTop;
-
-        let x: number = event.clientX - offset_left;
-        let y: number = event.clientY - offset_top;
-
+        let [x, y] = this.getMousePosition(event);
         if (event.button === 0 && event.buttons === 1 && event.type === "mousedown" && this.drag_active === false) { //press down
 
 
