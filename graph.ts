@@ -1,13 +1,23 @@
+//TODO: make axis grid static
+
+
+/**A coordinate */
 type Point = [number, number];
+
+/**X-Axis label and Y-Axis label */
 type AxisLabels = [string, string];
-interface PointGraphMethods {
-    "line": (xy_data: Array<[number, number]>, draw_customization: OptionalDrawOptions, clear_old: boolean) => void,
-    "scatter": (xy_data: Array<[number, number]>, draw_customization: OptionalDrawOptions, clear_old: boolean) => void
-}
 
+/**learning helper to see the internals of a type*/
+type Expose<T> = {
+    [P in keyof T]: T[P];
+} & {};
 
+let HELP: Expose<OptionalDrawOptions>;
+
+/**contains the containing bounds of the chart in canvas coordinates */
 type ChartArea = [number, number, number, number];
 
+/**class for containing the bounds of the chart in real coordinates */
 class XY_Extremes {
     xmin: number = Number.MAX_VALUE - 1;
     xmax: number = -Number.MAX_VALUE;
@@ -16,35 +26,7 @@ class XY_Extremes {
     ymin: number = Number.MAX_VALUE - 1;
 };
 
-/**
- * Possible properties you can change before plotting
- */
-interface DrawOptions {
-    line_width: number;
-    elem_color: string | CanvasGradient | CanvasPattern;
-    area_color: string | CanvasGradient | CanvasPattern;
-    area_transaparency: number;
-    fill: boolean;
-};
-type ChartScaleOptions = 1 | 0.96 | 0.95 | 0.9;
-interface GlobalOptions {
-    chart_scale: ChartScaleOptions;
-    edge_padding: number;
-    bg_axis_area: string | CanvasGradient | CanvasPattern;
-    bg_color: string | CanvasGradient | CanvasPattern;
-    draw_grid: boolean;
-    axis_titles: AxisLabels;
-    n_decimals: number;
-    n_gridlines: number;
-    chart_border_width: number;
-    chart_border_color: string | CanvasGradient | CanvasPattern;
-}
-
-export type GraphType = "scatter" | "line";
-
-/**
- * Info about already plotted data
- */
+/**Info about already plotted data*/
 interface OnCanvas {
     [n: PropertyKey]: {
         data: Array<[number, number]>
@@ -53,28 +35,58 @@ interface OnCanvas {
     }
 }
 
+/** Possible properties you can change before plotting*/
+interface DrawOptions {
+    line_width: number;
+    elem_color: string | CanvasGradient | CanvasPattern;
+    area_color: string | CanvasGradient | CanvasPattern;
+    area_transaparency: number;
+    fill: boolean;
+};
 
-/**
- * Makes all the properties of a type optional
-*/
+/**how much of the canvas that should be filled*/
+type ChartScaleOptions = 1 | 0.96 | 0.95 | 0.9;
+
+/**padding types, wheter to pad top right only or full. */
+type PaddingStyle = "full" | "topright";
+
+
+/**possible options that apply to the whole chart */
+interface GlobalOptions {
+    chart_scale: ChartScaleOptions;
+    edge_padding: number;
+    padding_style: PaddingStyle;
+    bg_axis_area: string | CanvasGradient | CanvasPattern;
+    bg_color: string | CanvasGradient | CanvasPattern;
+    draw_grid: boolean;
+    axis_titles: AxisLabels;
+    n_decimals: number;
+    n_gridlines: number;
+    chart_border_width: number;
+    chart_border_color: string | CanvasGradient | CanvasPattern;
+    zoom_intensity: number;
+}
+
+
+/**Makes all the properties of a type optional*/
 type MakeOptional<T> = {
     [P in keyof T]+?: T[P];
 }
 
-/**
- * learning helper to see the internals of a type
-*/
-type Expose<T> = {
-    [P in keyof T]: T[P];
-} & {};
-
-let HELP: Expose<CanvasRenderingContext2D>;
-
-/**
- * Type used to take optional customization of the chart
- */
+/** Possible properties you can change before plotting*/
 export type OptionalDrawOptions = MakeOptional<DrawOptions>
+/**possible options that apply to the whole chart */
 export type OptionalGlobalOptions = MakeOptional<GlobalOptions>;
+
+/**currently implemented chart types */
+export type GraphType = "scatter" | "line";
+
+
+interface GraphMethods {
+    "line": (xy_data: Array<[number, number]>, draw_customization: OptionalDrawOptions, clear_old: boolean) => void,
+    "scatter": (xy_data: Array<[number, number]>, draw_customization: OptionalDrawOptions, clear_old: boolean) => void
+}
+
 
 function interpol(min: number, max: number, scale: number) {
     return (min + (max - (min)) * scale)
@@ -126,32 +138,35 @@ abstract class GraphSetup {
     /**this bottom edge of y */
     public h!: number;
 
-    /**the right edge of the chart after padding */
-    protected y_chart_dimension_max!: number;
-    /**the left edge of the chart after padding */
-    protected y_chart_dimension_min!: number;
-    /**the bottom edge of the chart after padding */
-    protected x_chart_dimension_max!: number;
-    /**the right top of the chart after padding */
-    protected x_chart_dimension_min!: number;
 
-    /**the updated bounds of the values on the chart after scroll or drag */
-    public newbounds!: XY_Extremes;
+    /**the bottom edge of the chart after padding */
+    protected y_chart_dimension_max!: number;
+    /**the top of the chart after padding */
+    protected y_chart_dimension_min!: number;
+    /**the right edge of the chart after padding */
+    protected x_chart_dimension_max!: number;
+    /**the left edge of the chart after padding */
+    protected x_chart_dimension_min!: number;
 
     protected label_spacing!: number;
 
     /**ensures that the axis labeling exists */
     protected axis_numeration_exists: boolean = false;
 
+    /**the initial bounds of the chart in real coordinates */
     protected extremes!: XY_Extremes;
-    protected extremes_initializaed: boolean = false;
-    public zoom_intensity = 0.15;
 
+    /**the updated bounds of the values on the chart after scroll or drag in real coordinates */
+    public newbounds!: XY_Extremes;
+
+    /**makes sure that the bounds are initialized */
+    protected extremes_initializaed: boolean = false;
 
     /**options that are shared between all the plots on the same graph */
     protected global_options: GlobalOptions = {
         chart_scale: 0.95,
         edge_padding: 50,
+        padding_style: "full",
         bg_axis_area: "#eeeeee",
         bg_color: "white",
         draw_grid: true,
@@ -159,7 +174,8 @@ abstract class GraphSetup {
         n_decimals: 2,
         n_gridlines: 10,
         chart_border_width: 1.4,
-        chart_border_color: "black"
+        chart_border_color: "black",
+        zoom_intensity: 0.15,
     }
 
 
@@ -175,6 +191,7 @@ abstract class GraphSetup {
     /**field for temporarily storing backup of the cusomization for restoring */
     protected backup_customization: DrawOptions = this.draw_options;
 
+    /**if we currently are in a redraw event and certain things should happen in a different way */
     protected redraw_event: boolean = false;
 
     constructor(context: CanvasRenderingContext2D, options?: OptionalGlobalOptions) {
@@ -190,7 +207,7 @@ abstract class GraphSetup {
             this.updateGlobalCustomization(options);
         }
         this.chartArea();
-        this.applyPaddingToChartDimensionBounds(this.context.canvas.width, this.x, this.h, this.y);
+        this.applyPaddingToChartDimensionBounds();
     }
 
     protected initExtremes() {
@@ -204,7 +221,7 @@ abstract class GraphSetup {
     }
     /**
      * Get the dimensions of a charting area on x% of the canvas
-     * @updates [this.x, this.y, this.w, this.h] ~ Which you can use to draw a rectangle for the chart
+     * @updates [this.x, this.y, this.w, this.h] ~ Which is used to draw a rectangle for the chart
      */
     protected chartArea(): void {
         this.label_spacing = (this.context.measureText("").fontBoundingBoxAscent - this.context.measureText("").fontBoundingBoxDescent) * 6;
@@ -215,7 +232,7 @@ abstract class GraphSetup {
         this.chart_area = [this.x, this.y, this.w, this.h]
     }
 
-    protected applyPaddingToChartDimensionBounds(x_chart_dimension_max: number, x_chart_dimension_min: number, y_chart_dimension_max: number, y_chart_dimension_min: number) {
+    protected applyPaddingToChartDimensionBounds() {
         if (this.global_options.edge_padding > this.w / 2) {
             this.x_chart_dimension_max = this.w / 2;
             this.x_chart_dimension_min = this.w / 2;
@@ -230,8 +247,12 @@ abstract class GraphSetup {
             this.y_chart_dimension_max = this.h - this.global_options.edge_padding;
             this.y_chart_dimension_min = this.y + this.global_options.edge_padding;
         }
+        if(this.global_options.padding_style === "topright" && false){ //later
+            this.x_chart_dimension_min = this.x;
+            this.y_chart_dimension_max = this.h //- this.global_options.edge_padding;
+        }
+        //console.log(this.x_chart_dimension_min, this.x_chart_dimension_max, this.y_chart_dimension_min, this.y_chart_dimension_max)
     }
-
 
 
     protected drawChartingArea(): void {
@@ -291,10 +312,6 @@ abstract class GraphSetup {
                 }
             }
         }
-    }
-
-    protected updateDefaultCustomization(opts: OptionalDrawOptions) {
-        this.updateCustomization(opts);
     }
 
     protected updateGlobalCustomization(opts: OptionalGlobalOptions) {
@@ -393,7 +410,11 @@ abstract class GraphSetup {
 
 
     /**
-     * Scales an array of (x,y) points to fit in a specified area
+     * Scales real coordinates to canvas coordinates
+     * @param arr 
+     * @param clear_old if the old plot is being cleared and bounds should be reset
+     * @param min_and_max_values optionally provide bounds to override the normal ones
+     * @returns 
      */
     protected pointsToCanvasCoordinate(arr: Array<[number, number]>, clear_old: boolean, min_and_max_values?: XY_Extremes): Array<[number, number]> {
         /*determine the min and max of x and y */
@@ -436,7 +457,7 @@ abstract class GraphSetup {
         return scaled_xy;
     }
 
-    /**Returns what x need to be to return a coordinate at the extremes of the chart */
+    /**Gives you the extremes of the chart in real coordinates */
     protected getAxisBoundsFromXY(current_extremes: XY_Extremes) {
         let xmax = ((this.context.canvas.width - this.x_chart_dimension_min) / (this.x_chart_dimension_max - this.x_chart_dimension_min)) * (current_extremes.xmax - current_extremes.xmin) + current_extremes.xmin;
         let xmin = ((this.x - this.x_chart_dimension_min) / (this.x_chart_dimension_max - this.x_chart_dimension_min)) * (current_extremes.xmax - current_extremes.xmin) + current_extremes.xmin;
@@ -444,7 +465,7 @@ abstract class GraphSetup {
         let ymin = ((this.h - this.y_chart_dimension_min) / (this.y_chart_dimension_max - this.y_chart_dimension_min)) * (current_extremes.ymax - current_extremes.ymin) + current_extremes.ymin;
         return [xmax, xmin, ymax, ymin];
     }
-    /** Converts a canvas coordinate to the real graph coordinate*/
+    /** Converts a canvas coordinate to the real coordinate*/
     protected getPointFromCanvasCoordinate(x: number, y: number, current_extremes: XY_Extremes): [number, number] {
         let converted_x = ((x - this.x_chart_dimension_min) / (this.x_chart_dimension_max - this.x_chart_dimension_min)) * (current_extremes.xmax - current_extremes.xmin) + current_extremes.xmin;
         let converted_y = (((this.h - y) - this.y_chart_dimension_min) / (this.y_chart_dimension_max - this.y_chart_dimension_min)) * (current_extremes.ymax - current_extremes.ymin) + current_extremes.ymin;
@@ -456,7 +477,7 @@ abstract class GraphSetup {
 
 
 export class Grapher extends GraphSetup {
-    protected graph_methods: PointGraphMethods = {
+    protected graph_methods: GraphMethods = {
         "line": this.line,
         "scatter": this.scatter
     };
@@ -591,10 +612,8 @@ export class Grapher extends GraphSetup {
         this.context.restore();
         this.restoreCustomization();
     }
-    /**
-     * Redraws the existing graphs
-     * @param change the change of the extremes
-     */
+
+    /**Redraws the existing graphs*/
     protected redrawExisting() {
         this.drawChartingArea();
         let graphs_on_chart: OnCanvas = this.graphs_on_chart
@@ -604,7 +623,7 @@ export class Grapher extends GraphSetup {
         let graph_keys: string[] = Object.keys(graphs_on_chart);
         for (let i = 0; i < graph_keys.length; i++) {
             let key: keyof OnCanvas = graph_keys[i] as keyof OnCanvas;
-            let method: keyof PointGraphMethods = graphs_on_chart[key].type;
+            let method: keyof GraphMethods = graphs_on_chart[key].type;
 
             if (method === "line") {
                 this.line(graphs_on_chart[key].data, graphs_on_chart[key].options, false, key);
@@ -620,11 +639,16 @@ export class Grapher extends GraphSetup {
         this.redraw_event = false;
     }
 
+    protected getMousePosition(event: MouseEvent){
+        let bounds: DOMRect = this.context.canvas.getBoundingClientRect();
+        let x: number = (event.clientX - bounds.left) * (this.context.canvas.width / bounds.width);
+        let y: number = (event.clientY - bounds.top) * (this.context.canvas.height / bounds.height);
+        console.log(this.context.canvas.height, bounds.height)
+        return [x, y];
+    }
 
     protected handleMouseScroll(this: Grapher, event: WheelEvent) {
-        let x: number = event.offsetX;
-        let y: number = event.offsetY;
-        //console.log(x, event.pageX, event.deltaX, event.clientX, event.offsetX, event.screenX)
+        let [x, y] = this.getMousePosition(event);
 
         //convert the canvas coordinate to the real coordinate
         let [c_x, c_y] = this.getPointFromCanvasCoordinate(x, y, this.newbounds);
@@ -638,7 +662,7 @@ export class Grapher extends GraphSetup {
             } else if (event.deltaY < 0) {
                 sign = -1
             }
-            let scale: number = 1 + (sign * this.zoom_intensity);
+            let scale: number = 1 + (sign * this.global_options.zoom_intensity);
 
 
             this.newbounds = {
@@ -657,14 +681,7 @@ export class Grapher extends GraphSetup {
         if ((event.button === 0 && event.buttons === 0 && event.type === "mouseup" && this.drag_active === true) || event.type === "mouseleave") { //release
             this.drag_active = false;
         }
-        
-        let element: HTMLCanvasElement = event.target as HTMLCanvasElement;
-        let offset_left: number = element.offsetLeft;
-        let offset_top: number = element.offsetTop;
-
-        let x: number = event.clientX - offset_left;
-        let y: number = event.clientY - offset_top;
-
+        let [x, y] = this.getMousePosition(event);
         if (event.button === 0 && event.buttons === 1 && event.type === "mousedown" && this.drag_active === false) { //press down
 
 
