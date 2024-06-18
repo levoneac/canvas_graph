@@ -138,13 +138,14 @@ abstract class GraphSetup {
     /**this bottom edge of y */
     public h!: number;
 
-    /**the right edge of the chart after padding */
-    protected y_chart_dimension_max!: number;
-    /**the left edge of the chart after padding */
-    protected y_chart_dimension_min!: number;
+
     /**the bottom edge of the chart after padding */
+    protected y_chart_dimension_max!: number;
+    /**the top of the chart after padding */
+    protected y_chart_dimension_min!: number;
+    /**the right edge of the chart after padding */
     protected x_chart_dimension_max!: number;
-    /**the right top of the chart after padding */
+    /**the left edge of the chart after padding */
     protected x_chart_dimension_min!: number;
 
     protected label_spacing!: number;
@@ -246,10 +247,11 @@ abstract class GraphSetup {
             this.y_chart_dimension_max = this.h - this.global_options.edge_padding;
             this.y_chart_dimension_min = this.y + this.global_options.edge_padding;
         }
-        if(this.global_options.padding_style === "topright"){
+        if(this.global_options.padding_style === "topright" && false){ //later
             this.x_chart_dimension_min = this.x;
-            this.y_chart_dimension_max = this.h;
+            this.y_chart_dimension_max = this.h //- this.global_options.edge_padding;
         }
+        //console.log(this.x_chart_dimension_min, this.x_chart_dimension_max, this.y_chart_dimension_min, this.y_chart_dimension_max)
     }
 
 
