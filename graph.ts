@@ -4,8 +4,13 @@
 /**A coordinate */
 type Point = [number, number];
 
+type CanvasColor = string | CanvasGradient | CanvasPattern
+
 /**X-Axis label and Y-Axis label */
-type AxisLabels = [string, string];
+type AxisLabels = {
+    x: string,
+    y: string
+};
 
 /**learning helper to see the internals of a type*/
 type Expose<T> = {
@@ -38,8 +43,8 @@ interface OnCanvas {
 /** Possible properties you can change before plotting*/
 interface DrawOptions {
     line_width: number;
-    elem_color: string | CanvasGradient | CanvasPattern;
-    area_color: string | CanvasGradient | CanvasPattern;
+    elem_color: CanvasColor;
+    area_color: CanvasColor;
     area_transaparency: number;
     fill: boolean;
 };
@@ -56,14 +61,20 @@ interface GlobalOptions {
     chart_scale: ChartScaleOptions;
     edge_padding: number;
     padding_style: PaddingStyle;
-    bg_axis_area: string | CanvasGradient | CanvasPattern;
-    bg_color: string | CanvasGradient | CanvasPattern;
+    bg_axis_area: CanvasColor;
+    bg_color: CanvasColor;
     draw_grid: boolean;
     axis_titles: AxisLabels;
+    axis_titles_color: CanvasColor;
+    axis_titles_width: number;
+    axis_numbering_color: CanvasColor;
+    axis_numbering_width: number;
     n_decimals: number;
     n_gridlines: number;
+    gridline_color: CanvasColor;
+    gridline_width: number;
     chart_border_width: number;
-    chart_border_color: string | CanvasGradient | CanvasPattern;
+    chart_border_color: CanvasColor;
     zoom_intensity: number;
 }
 
@@ -162,6 +173,9 @@ abstract class GraphSetup {
     /**makes sure that the bounds are initialized */
     protected extremes_initializaed: boolean = false;
 
+    /**text adjustments */
+    protected label_constant: number = 17;
+
     /**options that are shared between all the plots on the same graph */
     protected global_options: GlobalOptions = {
         chart_scale: 0.95,
@@ -170,9 +184,15 @@ abstract class GraphSetup {
         bg_axis_area: "#eeeeee",
         bg_color: "white",
         draw_grid: true,
-        axis_titles: ["X", "Y"],
+        axis_titles: {x: "X", y: "Y"},
+        axis_titles_color: "black",
+        axis_titles_width: 1,
+        axis_numbering_color: "black",
+        axis_numbering_width: 0.7,
         n_decimals: 2,
         n_gridlines: 10,
+        gridline_color: "black",
+        gridline_width: 0.5,
         chart_border_width: 1.4,
         chart_border_color: "black",
         zoom_intensity: 0.15,
@@ -340,7 +360,8 @@ abstract class GraphSetup {
             if (this.global_options.chart_scale !== 1) {
 
                 //TEXT
-                this.context.lineWidth = 0.7;
+                this.context.strokeStyle = this.global_options.axis_numbering_color;
+                this.context.lineWidth = this.global_options.axis_numbering_width;
                 let toprint: string;
                 let size: number;
 
@@ -348,20 +369,23 @@ abstract class GraphSetup {
                 this.context.textAlign = "right"
                 this.context.textBaseline = "middle"
                 toprint = nDecimals(y.toString(10), this.global_options.n_decimals);
-                size = this.x - this.context.measureText(toprint).width - 15;
+                size = this.x - this.context.measureText(toprint).width - this.label_constant;
                 this.context.strokeText(toprint, this.x - 5, scaled_xy[0][1], this.label_spacing); // this.context.canvas.width - this.w - size
 
                 //X-axis
                 this.context.textAlign = "center"
                 this.context.textBaseline = "bottom"
                 toprint = nDecimals(x.toString(10), this.global_options.n_decimals);
-                size = this.x - this.context.measureText(toprint).width - 15;
-                this.context.strokeText(toprint, scaled_xy[0][0], this.h + 15, this.label_spacing * (this.w / 500));
+                size = this.x - this.context.measureText(toprint).width - this.label_constant;
+                this.context.strokeText(toprint, scaled_xy[0][0], this.h + this.label_constant, this.label_spacing * (this.w / 500));
+
+                this.context.strokeStyle = "black";
             }
 
             if (this.global_options.draw_grid === true) {
                 //LINES
-                this.context.lineWidth = 0.5;
+                this.context.strokeStyle = this.global_options.gridline_color;
+                this.context.lineWidth = this.global_options.gridline_width;
 
                 //horizontal
                 this.context.moveTo(this.x, scaled_xy[0][1]);
@@ -370,7 +394,9 @@ abstract class GraphSetup {
                 //vertical
                 this.context.moveTo(scaled_xy[0][0], this.h);
                 this.context.lineTo(scaled_xy[0][0], this.y);
-                this.context.stroke()
+                this.context.stroke();
+
+                this.context.strokeStyle = "black";
             }
 
 
@@ -378,13 +404,14 @@ abstract class GraphSetup {
         //LABELS
         if (this.global_options.chart_scale !== 1) {
             this.context.textBaseline = "alphabetic"
-            this.context.textAlign = "left"
-            this.context.lineWidth = 1;
+            this.context.textAlign = "center"
+            this.context.lineWidth = this.global_options.axis_titles_width;
+            this.context.strokeStyle = this.global_options.axis_titles_color;
             this.context.font = "18px serif"
-            this.context.strokeText(this.global_options.axis_titles[0], this.context.canvas.width / 2, this.context.canvas.height - 5)
-            this.context.translate(15, this.context.canvas.height / 2) //sets new (0,0) on the canvas
-            this.context.rotate(-90 * Math.PI / 180);
-            this.context.strokeText(this.global_options.axis_titles[1], -this.x / 4, 0)
+            this.context.strokeText(this.global_options.axis_titles.x, this.context.canvas.width / 2 + this.label_constant, this.context.canvas.height - 5, this.context.canvas.width - this.x)
+            this.context.translate(this.label_constant, this.context.canvas.height / 2) //sets new (0,0) on the canvas
+            this.context.rotate(Math.PI * -0.5);
+            this.context.strokeText(this.global_options.axis_titles.y, 0, 0, this.context.canvas.height - this.label_constant)
             this.axis_numeration_exists = true;
         }
         this.context.restore();
@@ -643,7 +670,6 @@ export class Grapher extends GraphSetup {
         let bounds: DOMRect = this.context.canvas.getBoundingClientRect();
         let x: number = (event.clientX - bounds.left) * (this.context.canvas.width / bounds.width);
         let y: number = (event.clientY - bounds.top) * (this.context.canvas.height / bounds.height);
-        console.log(this.context.canvas.height, bounds.height)
         return [x, y];
     }
 
