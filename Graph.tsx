@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, SyntheticEvent } from "react";
-import {Grapher, GraphType, OptionalGlobalOptions, OptionalDrawOptions} from "./graph";
+import { Grapher, GraphType, OptionalGlobalOptions, OptionalDrawOptions } from "./graph";
 
 export default function Graph({ xy_data, plot_type, global_options, individual_options, className }: { xy_data: Array<Array<[number, number]>>, plot_type: GraphType[], global_options?: OptionalGlobalOptions, individual_options?: OptionalDrawOptions[], className?: string }) {
     const ref = useRef<HTMLCanvasElement>(null);
@@ -41,7 +41,9 @@ export default function Graph({ xy_data, plot_type, global_options, individual_o
     }, [])
 
     return (
-        <canvas ref={ref} className={className} />
+        <div>
+            <canvas ref={ref} className={`${className}`} />
+        </div>
     );
 }
 
