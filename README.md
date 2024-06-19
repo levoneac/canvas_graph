@@ -15,4 +15,4 @@ A basic chart component made with html canvas, which currently can do scatter an
 ```
 data1 and data2 are arrays of coordinates like so: [[x0, y0], [x1, y1], ... ,[xn, yn]]. plot_type and individual_options change the styling of the data at the relevant index, while global_options contains styling options that are global to the chart.
 
-[](graph.png)
+![example](graph.png)
